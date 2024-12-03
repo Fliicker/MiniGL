@@ -87,23 +87,12 @@ void main() {
 
   //告诉WebGL如何获取数据并将其提供给顶点着色器的属性
   let positionAttributeLocation = gl.getAttribLocation(program, "a_position");
-  let matrixLocation = gl.getUniformLocation(program, "u_matrix");
   let positionBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer); // 将该缓冲区设置为正在处理的缓冲区
   setRectangle(gl, translation[0], translation[1], 200, 100)
-  // let positions = [
-  //   0, 0,
-  //   0, 0.5,
-  //   0.7, 0,
-  //   0.7, 0,
-  //   0.7, 0.5,
-  //   0, 0.5
-  // ];
-  // gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);  // 数组数据拷贝到GPU上的positionBuffer里面
 
   let vao = gl.createVertexArray(); //创建属性状态集合：顶点数组对象
   gl.bindVertexArray(vao);  //绑定这个顶点数组到WebGL,使所有属性的设置能够应用到WebGL属性状态集
-  gl.enableVertexAttribArray(positionAttributeLocation);  //启用属性
 
   //设置属性值如何从缓存区取出数据
   var size = 3;          // 2 components per iteration
@@ -113,6 +102,7 @@ void main() {
   var offset = 0;        // 数据在缓冲区的偏移量
   gl.vertexAttribPointer(
     positionAttributeLocation, size, type, normalize, stride, offset)
+  gl.enableVertexAttribArray(positionAttributeLocation);  //启用属性
 
   drawScene();
 
@@ -124,7 +114,11 @@ void main() {
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height); //使视域大小适应新的画布大小
 
     gl.clearColor(0, 0, 0, 0);
-    gl.clear(gl.COLOR_BUFFER_BIT);
+    // 清空画布和深度缓冲
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    gl.enable(gl.CULL_FACE);  // 剔除背面
+    gl.enable(gl.DEPTH_TEST)  // 深度检测（否则会按先后顺序渲染）
 
     gl.useProgram(program);   //运行着色器程序
     gl.bindVertexArray(vao);
