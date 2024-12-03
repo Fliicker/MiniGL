@@ -102,6 +102,7 @@ let m4 = {
     ];
   },
 
+  // 左下角为原点 --> 左上角为原点
   projection: function (width, height, depth) {
     // 注意：这个矩阵翻转了 Y 轴，所以 0 在上方
     return [
