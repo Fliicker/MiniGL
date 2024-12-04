@@ -168,6 +168,19 @@ void main() {
       1, 1, 1,  // 6: Right top front
       -1, 1, 1,  // 7: Left top front
     ]);
+
+    const faces = [
+      [0, 3, 1, 2],
+      [5, 4, 6, 7],
+      [, 4, 6, 7],
+    ]
+
+    const indices = [];
+    for (const face of faces) {
+        indices.push(face[0], face[1], face[2]);  // Triangle 1
+        indices.push(face[2], face[1], face[3]);  // Triangle 2
+    }
+    return new Uint16Array(indices);
   }
 
 
