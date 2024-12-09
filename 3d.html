@@ -49,12 +49,12 @@ void main() {
   // gl_Position is a special variable a vertex shader
   // is responsible for setting
   gl_Position = u_matrix * vec4(a_position, 1.0);
-  // gl_Position = vec4(a_position, 1.0);
 
   // Convert from clip space to color space.
   // Clip space goes -1.0 to +1.0
   // Color space goes from 0.0 to 1.0
-  v_color = gl_Position * 0.5 + 0.5;
+  v_color =  gl_Position / gl_Position.w * 0.5 + 0.5;
+  // v_color = vec4(a_position)
 }
 `;
 
@@ -77,8 +77,12 @@ void main() {
 }
 `;
 
-  let translation = [gl.canvas.clientWidth / 2 , gl.canvas.clientHeight / 2 , 0];
-  let rotation = [degToRad(40), degToRad(40),degToRad(10)];
+  // let translation = [gl.canvas.clientWidth / 2, gl.canvas.clientHeight / 2, 0];
+  let translation = [0, 0, 0];
+  let cameraPosition = [0, 0, 1000]
+  let rotation = [degToRad(20), degToRad(40), degToRad(0)];
+  let rotationTrackball = m4.identity();    // 虚拟跟踪球矩阵
+  // let rotation = [degToRad(10), degToRad(10), degToRad(10)];
 
   //创建着色器实例、上传GLSL源码和编译着色器
   let vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
@@ -98,7 +102,7 @@ void main() {
   let vao = gl.createVertexArray(); //创建属性状态集合：顶点数组对象(vao), 该对象指向顶点数据
   gl.bindVertexArray(vao);  //将创建的vao绑定为当前活动的VAO, 使后续所有属性的设置(如gl.vertexAttribPointer)都会记录到这个VAO中
   gl.enableVertexAttribArray(positionAttributeLocation);  //启用属性，使顶点着色器能访问到缓冲区的数据
-  
+
   //顶点属性配置, 设置属性值如何从缓存区取出数据
   var size = 3;          // 2 components per iteration
   var type = gl.FLOAT;   // the data is 32bit floats
@@ -113,6 +117,47 @@ void main() {
 
   window.addEventListener('keydown', handleKeyDown, true);
 
+  let startX = 0;
+  let startY = 0;
+  let isDragging = false;
+
+  window.addEventListener('mousedown', (e) => {
+    startX = e.clientX;
+    startY = e.clientY;
+    isDragging = true;
+
+    console.log(`拖动开始：(${startX}, ${startY})`);
+  });
+
+  window.addEventListener('mouseup', (e) => {
+    if (isDragging) {
+      // 记录拖动的终止点
+      let endX = e.clientX;
+      let endY = e.clientY;
+
+      console.log(`拖动结束：(${endX}, ${endY})`);
+
+      // 结束拖动
+      isDragging = false;
+    }
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (isDragging) {
+      let dy = -e.movementX;
+      let dx = -e.movementY;
+      let l = Math.sqrt(dx * dx + dy * dy);
+      if (l === 0) return
+      let axis = [dx / l, dy / l, 0]    // 确定旋转轴
+      let angle = l * 0.003  // 调整旋转灵敏度
+
+      rotationTrackball = m4.multiply(rotationTrackball, m4.rotateAroundAxis(angle, axis))
+      console.log(rotationTrackball)
+      drawScene()
+    }
+    // 执行鼠标移动时的逻辑操作
+  });
+
 
   function drawScene() {
     resizeCanvasToDisplaySize(gl.canvas);
@@ -122,7 +167,7 @@ void main() {
     // 清空画布和深度缓冲
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    gl.enable(gl.CULL_BACK);  // 剔除背面
+    gl.enable(gl.CULL_FACE);  // 剔除背面
     gl.enable(gl.DEPTH_TEST)  // 深度检测（否则会按先后顺序渲染）
 
     gl.useProgram(program);   //运行着色器程序
@@ -130,15 +175,23 @@ void main() {
     let colorLocation = gl.getUniformLocation(program, "u_color");
     let matrixLocation = gl.getUniformLocation(program, "u_matrix");
     // gl.uniform4f(colorLocation, Math.random(), Math.random(), Math.random(), 1); 设置随机颜色
-    let matrix = m4.projection(gl.canvas.clientWidth, gl.canvas.clientHeight, 1600);
-    matrix = m4.translate(matrix, translation[0], translation[1], translation[2]);
-    matrix = m4.xRotate(matrix, rotation[0]);
-    // let matrix = m4.xRotation(rotation[0])
-    matrix = m4.yRotate(matrix, rotation[1]);
-    matrix = m4.zRotate(matrix, rotation[2]);
+    let projectionMatrix = m4.perspective(degToRad(60), gl.canvas.clientWidth / gl.canvas.clientHeight, 1, 2000);
+    // let projectionMatrix = m4.projection(gl.canvas.clientWidth, gl.canvas.clientHeight, 1600);
+    let cameraMatrix = m4.lookAt(cameraPosition, [0, 0, 0], [0, 1, 0])
+    let viewMatrix = m4.inverse(cameraMatrix);
+
+    let modelMatrix = m4.translation(translation[0], translation[1], translation[2]);
+    modelMatrix = m4.multiply(modelMatrix, rotationTrackball)
+    modelMatrix = m4.xRotate(modelMatrix, rotation[0]);
+    modelMatrix = m4.yRotate(modelMatrix, rotation[1]);
+    modelMatrix = m4.zRotate(modelMatrix, rotation[2]);
+
+    let vpMatrix = m4.multiply(projectionMatrix, viewMatrix)
+    let mvpMatrix = m4.multiply(vpMatrix, modelMatrix)
+
     // let matrix = m4.identity();
-    console.log(matrix);
-    gl.uniformMatrix4fv(matrixLocation, false, matrix);   // 设置变换矩阵
+    console.log(m4.multiplyMatrixVector(mvpMatrix, [-200, -200, -200, 1]));
+    gl.uniformMatrix4fv(matrixLocation, false, mvpMatrix);   // 设置变换矩阵
 
     // let primitiveType = gl.TRIANGLES;
     // let offset2 = 0;
@@ -189,7 +242,7 @@ void main() {
       [4, 0, 5, 1], // bottom
       [6, 2, 7, 3], // top
       [4, 7, 0, 3], // left
-      [1, 5, 2, 6], // right
+      [1, 2, 5, 6], // right
     ]
 
     const indices = [];
@@ -204,55 +257,53 @@ void main() {
     if (e.ctrlKey) {
       if (e.key === 'ArrowLeft') {
         rotation[0] -= degToRad(5);
-        drawScene();
       }
 
       if (e.key === 'ArrowRight') {
         rotation[0] += degToRad(5);
-        drawScene();
       }
 
       if (e.key === 'ArrowUp') {
         rotation[1] += degToRad(5);
-        drawScene();
       }
 
       if (e.key === 'ArrowDown') {
         rotation[1] -= degToRad(5);
-        drawScene();
       }
 
       if (e.key === 'q') {
         rotation[2] += degToRad(5);
-        drawScene();
       }
 
       if (e.key === 'e') {
         rotation[2] -= degToRad(5);
-        drawScene();
       }
-    } else {
+    } else if (e.shiftKey) {
       if (e.key === 'ArrowLeft') {
-        translation[0] -= 3;
-        drawScene();
+        cameraPosition[0] -= 10;
       }
 
       if (e.key === 'ArrowRight') {
-        translation[0] += 3;
-        drawScene();
+        cameraPosition[0] += 10;
+      }
+    } else {
+      if (e.key === 'ArrowLeft') {
+        translation[0] -= 10;
       }
 
-      console.log(e.key)
+      if (e.key === 'ArrowRight') {
+        translation[0] += 10;
+      }
+
       if (e.key === 'ArrowUp') {
-        translation[1] -= 3;
-        drawScene();
+        translation[1] += 10;
       }
 
       if (e.key === 'ArrowDown') {
-        translation[1] += 3;
-        drawScene();
+        translation[1] -= 10;
       }
     }
+    drawScene();
   }
 
   function radToDeg(r) {
