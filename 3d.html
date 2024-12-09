@@ -77,7 +77,7 @@ void main() {
 }
 `;
 
-  let translation = [0, 0, 0];
+  let translation = [gl.canvas.clientWidth / 2 , gl.canvas.clientHeight / 2 , 0];
   let rotation = [degToRad(40), degToRad(40),degToRad(10)];
 
   //创建着色器实例、上传GLSL源码和编译着色器
@@ -92,23 +92,22 @@ void main() {
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer); // 将该缓冲区设置为正在处理的缓冲区
   // setRectangle(gl, translation[0], translation[1], 200, 100)
 
-
   // 绘制正方体
-  const vertices = generateCubeVertices(0.5);
-
+  const vertices = generateCubeVertices(200);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW)
-  let vao = gl.createVertexArray(); //创建属性状态集合：顶点数组对象
-  gl.bindVertexArray(vao);  //绑定这个顶点数组到WebGL,使所有属性的设置能够应用到WebGL属性状态集
-
-  //设置属性值如何从缓存区取出数据
+  let vao = gl.createVertexArray(); //创建属性状态集合：顶点数组对象(vao), 该对象指向顶点数据
+  gl.bindVertexArray(vao);  //将创建的vao绑定为当前活动的VAO, 使后续所有属性的设置(如gl.vertexAttribPointer)都会记录到这个VAO中
+  gl.enableVertexAttribArray(positionAttributeLocation);  //启用属性，使顶点着色器能访问到缓冲区的数据
+  
+  //顶点属性配置, 设置属性值如何从缓存区取出数据
   var size = 3;          // 2 components per iteration
   var type = gl.FLOAT;   // the data is 32bit floats
   var normalize = false; // don't normalize the data
   var stride = 12;        // 从一条数据到下一条数据需要跳过的字节数(为0时使用与类型和大小匹配的步幅)
   var offset = 0;        // 数据在缓冲区的偏移量
   gl.vertexAttribPointer(
-    positionAttributeLocation, size, type, normalize, stride, offset)
-  gl.enableVertexAttribArray(positionAttributeLocation);  //启用属性
+    positionAttributeLocation, size, type, normalize, stride, offset)   // 这些顶点属性会存储在当前VAO中
+
 
   drawScene();
 
@@ -127,17 +126,16 @@ void main() {
     gl.enable(gl.DEPTH_TEST)  // 深度检测（否则会按先后顺序渲染）
 
     gl.useProgram(program);   //运行着色器程序
-    gl.bindVertexArray(vao);
 
     let colorLocation = gl.getUniformLocation(program, "u_color");
     let matrixLocation = gl.getUniformLocation(program, "u_matrix");
     // gl.uniform4f(colorLocation, Math.random(), Math.random(), Math.random(), 1); 设置随机颜色
-    // let matrix = m4.projection(gl.canvas.clientWidth, gl.canvas.clientHeight, 1600);
-    // let matrix = m4.xRotate(matrix, rotation[0]);
-    let matrix = m4.xRotation(rotation[0])
+    let matrix = m4.projection(gl.canvas.clientWidth, gl.canvas.clientHeight, 1600);
+    matrix = m4.translate(matrix, translation[0], translation[1], translation[2]);
+    matrix = m4.xRotate(matrix, rotation[0]);
+    // let matrix = m4.xRotation(rotation[0])
     matrix = m4.yRotate(matrix, rotation[1]);
     matrix = m4.zRotate(matrix, rotation[2]);
-    matrix = m4.translate(matrix, translation[0], translation[1], translation[2]);
     // let matrix = m4.identity();
     console.log(matrix);
     gl.uniformMatrix4fv(matrixLocation, false, matrix);   // 设置变换矩阵
@@ -148,7 +146,6 @@ void main() {
     // gl.drawArrays(primitiveType, offset2, count);
 
     const indices = generateCubeIndices();
-    console.log(indices)
     const indexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);  // 绑定索引缓存
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
@@ -176,10 +173,10 @@ void main() {
       -a, -a, -a,  // 0: Left bottom back
       a, -a, -a,  // 1: Right bottom back
       a, a, -a,  // 2: Right top back
-      -a, a, -a,  // 3: Left top back
+      -a, a, -a,   // 3: Left top back
       -a, -a, a,  // 4: Left bottom front
       a, -a, a,  // 5: Right bottom front
-      a, a, a,  // 6: Right top front
+      a, a, a,    // 6: Right top front
       -a, a, a,  // 7: Left top front
     ];
     return vertices;
@@ -200,8 +197,6 @@ void main() {
       indices.push(face[0], face[1], face[2]);  // Triangle 1
       indices.push(face[2], face[1], face[3]);  // Triangle 2
     }
-    // indices.push(0, 1, 2);  // Triangle 1
-    // indices.push(0, 2, 3);  // Triangle 2
     return indices;
   }
 
@@ -259,7 +254,6 @@ void main() {
       }
     }
   }
-
 
   function radToDeg(r) {
     return r * 180 / Math.PI;
