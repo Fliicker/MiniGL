@@ -94,7 +94,8 @@ void main() {
   let positionAttributeLocation = gl.getAttribLocation(program, "a_position");
   let positionBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer); // 将该缓冲区设置为正在处理的缓冲区
-  // setRectangle(gl, translation[0], translation[1], 200, 100)
+  const recVertices = setRectangle(200)
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(recVertices), gl.STATIC_DRAW);
 
   // 绘制正方体
   const vertices = generateCubeVertices(200);
@@ -193,10 +194,10 @@ void main() {
     console.log(m4.multiplyMatrixVector(mvpMatrix, [-200, -200, -200, 1]));
     gl.uniformMatrix4fv(matrixLocation, false, mvpMatrix);   // 设置变换矩阵
 
-    // let primitiveType = gl.TRIANGLES;
-    // let offset2 = 0;
-    // let count = 6;
-    // gl.drawArrays(primitiveType, offset2, count);
+    let primitiveType = gl.TRIANGLES;
+    let offset2 = 0;
+    let count = 6;
+    gl.drawArrays(primitiveType, offset2, count);
 
     const indices = generateCubeIndices();
     const indexBuffer = gl.createBuffer();
@@ -205,19 +206,17 @@ void main() {
     gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
   }
 
-  function setRectangle(gl, x, y, width, height) {
-    var x1 = x;
-    var x2 = x + width;
-    var y1 = y;
-    var y2 = y + height;
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-      x1, y1, 0,
-      x2, y1, 0,
-      x1, y2, 0,
-      x1, y2, 0,
-      x2, y1, 0,
-      x2, y2, 0
-    ]), gl.STATIC_DRAW);
+  function setRectangle(width) {
+    const a = width / 2
+    const vertices = [
+      2 * a, -a, 2 * a,
+      -2 * a, -a, -2 * a,
+      -2 * a, -a, 2 * a,
+      -2 * a, -a, -2 * a,
+      2 * a, -a, 2 * a,
+      2 * a, -a, -2 * a 
+    ]
+    return vertices
   }
 
   function generateCubeVertices(width) {
