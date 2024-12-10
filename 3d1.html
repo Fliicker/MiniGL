@@ -67,9 +67,7 @@ void main() {
 precision highp float;
 
 in vec3 v_normal;
-
-in vec4 v_color;    // 接收从顶点着色器输出的颜色属性(变量名相同)
-
+ 
 uniform vec3 u_reverseLightDirection;
 uniform vec4 u_color;
 
@@ -85,9 +83,8 @@ void main() {
   // 通过取法线与光线反向的点积计算光
   float light = dot(normal, u_reverseLightDirection);
  
-  // outColor = v_color;
-  outColor = u_color;
-
+  // outColor = u_color;
+ 
   // 只将颜色部分乘以光
   outColor.rgb *= light;
 }
@@ -121,6 +118,7 @@ void main() {
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW)
   let vao = gl.createVertexArray(); //创建属性状态集合：顶点数组对象(vao), 该对象指向顶点数据
   gl.bindVertexArray(vao);  //将创建的vao绑定为当前活动的VAO, 使后续所有属性的设置(如gl.vertexAttribPointer)都会记录到这个VAO中
+
   gl.enableVertexAttribArray(positionAttributeLocation);  //启用属性，使顶点着色器能访问到缓冲区的数据
 
   //顶点属性配置, 设置属性值如何从缓存区取出数据
@@ -132,13 +130,13 @@ void main() {
   gl.vertexAttribPointer(
     positionAttributeLocation, size, type, normalize, stride, offset)   // 这些顶点属性会存储在当前VAO中
 
-  // 创建法线缓冲区, 将其设为当前ARRAY_BUFFER
-  var normalBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-  let normals = generateCubeNormals(vertices, indices)
-  gl.bufferData(gl.ARRAY_BUFFER, normals, gl.STATIC_DRAW);
-  gl.enableVertexAttribArray(normalAttributeLocation);
-  gl.vertexAttribPointer(normalAttributeLocation, 3, gl.FLOAT, false, 0, 0);
+  // // 创建法线缓冲区, 将其设为当前ARRAY_BUFFER
+  // var normalBuffer = gl.createBuffer();
+  // gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+  // let normals = generateCubeNormals(vertices, indices)
+  // gl.bufferData(gl.ARRAY_BUFFER, normals, gl.STATIC_DRAW);
+  // gl.enableVertexAttribArray(normalAttributeLocation);
+  // gl.vertexAttribPointer(normalAttributeLocation, 3, gl.FLOAT, false, 0, 0);
 
   drawScene();
 
@@ -189,25 +187,24 @@ void main() {
     gl.useProgram(program);   //运行着色器程序
 
     // gl.uniform4f(colorLocation, Math.random(), Math.random(), Math.random(), 1); 设置随机颜色
+
     let projectionMatrix = m4.perspective(degToRad(60), gl.canvas.clientWidth / gl.canvas.clientHeight, 1, 2000);
     // let projectionMatrix = m4.projection(gl.canvas.clientWidth, gl.canvas.clientHeight, 1600);
     let cameraMatrix = m4.lookAt(cameraPosition, [0, 0, 0], [0, 1, 0])
     let viewMatrix = m4.inverse(cameraMatrix);
-
     let modelMatrix = m4.translation(translation[0], translation[1], translation[2]);
     modelMatrix = m4.multiply(modelMatrix, rotationTrackball)
     modelMatrix = m4.xRotate(modelMatrix, rotation[0]);
     modelMatrix = m4.yRotate(modelMatrix, rotation[1]);
     modelMatrix = m4.zRotate(modelMatrix, rotation[2]);
-
     let vpMatrix = m4.multiply(projectionMatrix, viewMatrix)
     let mvpMatrix = m4.multiply(vpMatrix, modelMatrix)
 
     // let matrix = m4.identity();
     // console.log(m4.multiplyMatrixVector(mvpMatrix, [-200, -200, -200, 1]));
-    gl.uniform4fv(colorLocation, [0.2, 1, 0.2, 1]);
+    gl.uniform4fv(colorLocation, [0.2, 1, 0.2, 1]); // green
     gl.uniformMatrix4fv(matrixLocation, false, mvpMatrix);   // 设置变换矩阵
-    gl.uniform3fv(reverseLightDirectionLocation, m3.normalize([0, 0, 1]));
+    gl.uniform3fv(reverseLightDirectionLocation, m3.normalize([0.5, 0.7, 1]));
 
     const indexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);  // 绑定索引缓存
@@ -265,7 +262,7 @@ void main() {
       [1, 2, 5, 6], // right
 
       // [8, 9, 10, 11],
-      // [11, 10, 9, 8]
+      // [11, 9, 10, 8]
     ]
 
     const indices = [];
