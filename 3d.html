@@ -134,19 +134,9 @@ void main() {
   var normalBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
   let normals = generateCubeNormals(vertices, indices)
-  console.log(normals)
+  gl.bufferData(gl.ARRAY_BUFFER, normals, gl.STATIC_DRAW);
   gl.enableVertexAttribArray(normalAttributeLocation);
   gl.vertexAttribPointer(normalAttributeLocation, 3, gl.FLOAT, false, 0, 0);
-
-
-  // Tell the attribute how to get data out of colorBuffer (ARRAY_BUFFER)
-  var size = 3;          // 3 components per iteration
-  var type = gl.FLOAT;   // the data is 32bit floats
-  var normalize = false; // don't normalize the data
-  var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next color
-  var offset = 0;        // start at the beginning of the buffer
-  gl.vertexAttribPointer(
-    normalAttributeLocation, size, type, normalize, stride, offset);
 
 
   drawScene();
@@ -285,39 +275,41 @@ void main() {
   }
 
   function generateCubeNormals(vertices, indices) {
-    const normals = new Array(vertices.length).fill(0); // 初始化为0
+    const normals = new Float32Array(vertices.length); // 初始化法向量数组
 
-    // 遍历索引，计算每个三角形的法线
+    // 遍历每个三角形
     for (let i = 0; i < indices.length; i += 3) {
-      const i1 = indices[i] * 3;     // 第一个顶点索引
-      const i2 = indices[i + 1] * 3; // 第二个顶点索引
-      const i3 = indices[i + 2] * 3; // 第三个顶点索引
+      // 获取三角形三个顶点的索引
+      const i0 = indices[i];
+      const i1 = indices[i + 1];
+      const i2 = indices[i + 2];
 
-      // 获取三角形顶点
-      const v1 = [vertices[i1], vertices[i1 + 1], vertices[i1 + 2]];
-      const v2 = [vertices[i2], vertices[i2 + 1], vertices[i2 + 2]];
-      const v3 = [vertices[i3], vertices[i3 + 1], vertices[i3 + 2]];
+      // 获取三角形三个顶点的坐标
+      const v0 = vertices.slice(i0 * 3, i0 * 3 + 3);
+      const v1 = vertices.slice(i1 * 3, i1 * 3 + 3);
+      const v2 = vertices.slice(i2 * 3, i2 * 3 + 3);
 
-      const vector1 = m3.subtractVectors(v2, v1);
-      const vector2 = m3.subtractVectors(v3, v1);
+      // 计算两个边向量
+      const edge1 = m3.subtractVectors(v1, v0);
+      const edge2 = m3.subtractVectors(v2, v0);
 
-      // 叉积计算法线
-      const normal = m3.normalize(m3.cross(vector1, vector2));
+      // 计算法向量（叉积）并归一化
+      const normal = m3.normalize(m3.cross(edge1, edge2));
 
-      // 将法线加到每个顶点的法线中（累积，支持平滑法线）
-      for (let j of [i1, i2, i3]) {
-        normals[j] += normal[0];
-        normals[j + 1] += normal[1];
-        normals[j + 2] += normal[2];
+      // 累加法向量到对应顶点的法向量中
+      for (const idx of [i0, i1, i2]) {
+        normals[idx * 3] += normal[0];
+        normals[idx * 3 + 1] += normal[1];
+        normals[idx * 3 + 2] += normal[2];
       }
     }
 
-    // 将累积法线归一化
+    // 对每个顶点的法向量进行归一化
     for (let i = 0; i < normals.length; i += 3) {
-      const normal = m3.normalize([normals[i], normals[i + 1], normals[i + 2]]);
-      normals[i] = normal[0];
-      normals[i + 1] = normal[1];
-      normals[i + 2] = normal[2];
+      const normalized = m3.normalize([normals[i], normals[i + 1], normals[i + 2]]);
+      normals[i] = normalized[0];
+      normals[i + 1] = normalized[1];
+      normals[i + 2] = normalized[2];
     }
 
     return normals;
