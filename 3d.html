@@ -41,8 +41,10 @@
 // an attribute is an input (in) to a vertex shader.
 // It will receive data from a buffer
 in vec3 a_position;
+in vec3 a_normal;
 uniform mat4 u_matrix;
 out vec4 v_color;   // 输出颜色
+out vec3 v_normal;
 
 // all shaders have a main function
 void main() {
@@ -56,25 +58,35 @@ void main() {
   // Color space goes from 0.0 to 1.0
   v_color =  gl_Position / gl_Position.w * 0.5 + 0.5;
   // v_color = vec4(a_position)
+  v_normal = a_normal;
 }
 `;
 
   var fragmentShaderSource = `#version 300 es
 
-// fragment shaders don't have a default precision so we need
-// to pick one. highp is a good default. It means "high precision"
 precision highp float;
 
-in vec4 v_color;    // 接收从顶点着色器输出的颜色属性(变量名相同)
+in vec3 v_normal;
+ 
+uniform vec3 u_reverseLightDirection;
+uniform vec4 u_color;
 
-// we need to declare an output for the fragment shader
 out vec4 outColor;
 
 void main() {
   // Just set the output to a constant redish-purple
   // outColor = vec4(1, 0, 0.5, 1);
 
-  outColor = v_color;
+  // 因为 v_normal 是一个变化的插值所以它不会是一个单位向量。 归一化使它成为单位向量
+  vec3 normal = normalize(v_normal);
+ 
+  // 通过取法线与光线反向的点积计算光
+  float light = dot(normal, u_reverseLightDirection);
+ 
+  // outColor = u_color;
+ 
+  // 只将颜色部分乘以光
+  outColor.rgb *= light;
 }
 `;
 
@@ -92,15 +104,21 @@ void main() {
   let program = createProgram(gl, vertexShader, fragmentShader);
 
   //告诉WebGL如何获取数据并将其提供给顶点着色器的属性
+  let colorLocation = gl.getUniformLocation(program, "u_color");
+  let matrixLocation = gl.getUniformLocation(program, "u_matrix");
+  let reverseLightDirectionLocation = gl.getUniformLocation(program, "u_reverseLightDirection");
   let positionAttributeLocation = gl.getAttribLocation(program, "a_position");
+  let normalAttributeLocation = gl.getAttribLocation(program, "a_normal");
   let positionBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer); // 将该缓冲区设置为正在处理的缓冲区
 
   // 绘制正方体
   const vertices = generateCubeVertices(200);
+  const indices = generateCubeIndices();
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW)
   let vao = gl.createVertexArray(); //创建属性状态集合：顶点数组对象(vao), 该对象指向顶点数据
   gl.bindVertexArray(vao);  //将创建的vao绑定为当前活动的VAO, 使后续所有属性的设置(如gl.vertexAttribPointer)都会记录到这个VAO中
+
   gl.enableVertexAttribArray(positionAttributeLocation);  //启用属性，使顶点着色器能访问到缓冲区的数据
 
   //顶点属性配置, 设置属性值如何从缓存区取出数据
@@ -111,6 +129,24 @@ void main() {
   var offset = 0;        // 数据在缓冲区的偏移量
   gl.vertexAttribPointer(
     positionAttributeLocation, size, type, normalize, stride, offset)   // 这些顶点属性会存储在当前VAO中
+
+  // 创建法线缓冲区, 将其设为当前ARRAY_BUFFER
+  var normalBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+  let normals = generateCubeNormals(vertices, indices)
+  console.log(normals)
+  gl.enableVertexAttribArray(normalAttributeLocation);
+  gl.vertexAttribPointer(normalAttributeLocation, 3, gl.FLOAT, false, 0, 0);
+
+
+  // Tell the attribute how to get data out of colorBuffer (ARRAY_BUFFER)
+  var size = 3;          // 3 components per iteration
+  var type = gl.FLOAT;   // the data is 32bit floats
+  var normalize = false; // don't normalize the data
+  var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next color
+  var offset = 0;        // start at the beginning of the buffer
+  gl.vertexAttribPointer(
+    normalAttributeLocation, size, type, normalize, stride, offset);
 
 
   drawScene();
@@ -161,30 +197,26 @@ void main() {
 
     gl.useProgram(program);   //运行着色器程序
 
-    let colorLocation = gl.getUniformLocation(program, "u_color");
-    let matrixLocation = gl.getUniformLocation(program, "u_matrix");
     // gl.uniform4f(colorLocation, Math.random(), Math.random(), Math.random(), 1); 设置随机颜色
+
     let projectionMatrix = m4.perspective(degToRad(60), gl.canvas.clientWidth / gl.canvas.clientHeight, 1, 2000);
     // let projectionMatrix = m4.projection(gl.canvas.clientWidth, gl.canvas.clientHeight, 1600);
     let cameraMatrix = m4.lookAt(cameraPosition, [0, 0, 0], [0, 1, 0])
     let viewMatrix = m4.inverse(cameraMatrix);
-
     let modelMatrix = m4.translation(translation[0], translation[1], translation[2]);
     modelMatrix = m4.multiply(modelMatrix, rotationTrackball)
     modelMatrix = m4.xRotate(modelMatrix, rotation[0]);
     modelMatrix = m4.yRotate(modelMatrix, rotation[1]);
     modelMatrix = m4.zRotate(modelMatrix, rotation[2]);
-
     let vpMatrix = m4.multiply(projectionMatrix, viewMatrix)
     let mvpMatrix = m4.multiply(vpMatrix, modelMatrix)
 
     // let matrix = m4.identity();
     // console.log(m4.multiplyMatrixVector(mvpMatrix, [-200, -200, -200, 1]));
+    gl.uniform4fv(colorLocation, [0.2, 1, 0.2, 1]); // green
     gl.uniformMatrix4fv(matrixLocation, false, mvpMatrix);   // 设置变换矩阵
+    gl.uniform3fv(reverseLightDirectionLocation, m3.normalize([0.5, 0.7, 1]));
 
-
-
-    const indices = generateCubeIndices();
     const indexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);  // 绑定索引缓存
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
@@ -241,7 +273,7 @@ void main() {
       [1, 2, 5, 6], // right
 
       [8, 9, 10, 11],
-      [11, 10, 9, 8]
+      [11, 9, 10, 8]
     ]
 
     const indices = [];
@@ -250,6 +282,45 @@ void main() {
       indices.push(face[2], face[1], face[3]);  // Triangle 2
     }
     return indices;
+  }
+
+  function generateCubeNormals(vertices, indices) {
+    const normals = new Array(vertices.length).fill(0); // 初始化为0
+
+    // 遍历索引，计算每个三角形的法线
+    for (let i = 0; i < indices.length; i += 3) {
+      const i1 = indices[i] * 3;     // 第一个顶点索引
+      const i2 = indices[i + 1] * 3; // 第二个顶点索引
+      const i3 = indices[i + 2] * 3; // 第三个顶点索引
+
+      // 获取三角形顶点
+      const v1 = [vertices[i1], vertices[i1 + 1], vertices[i1 + 2]];
+      const v2 = [vertices[i2], vertices[i2 + 1], vertices[i2 + 2]];
+      const v3 = [vertices[i3], vertices[i3 + 1], vertices[i3 + 2]];
+
+      const vector1 = m3.subtractVectors(v2, v1);
+      const vector2 = m3.subtractVectors(v3, v1);
+
+      // 叉积计算法线
+      const normal = m3.normalize(m3.cross(vector1, vector2));
+
+      // 将法线加到每个顶点的法线中（累积，支持平滑法线）
+      for (let j of [i1, i2, i3]) {
+        normals[j] += normal[0];
+        normals[j + 1] += normal[1];
+        normals[j + 2] += normal[2];
+      }
+    }
+
+    // 将累积法线归一化
+    for (let i = 0; i < normals.length; i += 3) {
+      const normal = m3.normalize([normals[i], normals[i + 1], normals[i + 2]]);
+      normals[i] = normal[0];
+      normals[i + 1] = normal[1];
+      normals[i + 2] = normal[2];
+    }
+
+    return normals;
   }
 
   function handleKeyDown(e) {
