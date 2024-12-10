@@ -255,10 +255,10 @@ void main() {
       a, a, a,    // 6: Right top front
       -a, a, a,  // 7: Left top front
 
-      -2 * a, -a, 2 * a,
-      2 * a, -a, 2 * a,
-      -2 * a, -a, -2 * a,
-      2 * a, -a, -2 * a
+      // -2 * a, -a, 2 * a,
+      // 2 * a, -a, 2 * a,
+      // -2 * a, -a, -2 * a,
+      // 2 * a, -a, -2 * a
     ];
     return vertices;
   }
@@ -272,8 +272,8 @@ void main() {
       [4, 7, 0, 3], // left
       [1, 2, 5, 6], // right
 
-      [8, 9, 10, 11],
-      [11, 9, 10, 8]
+      // [8, 9, 10, 11],
+      // [11, 9, 10, 8]
     ]
 
     const indices = [];
@@ -285,13 +285,14 @@ void main() {
   }
 
   function generateCubeNormals(vertices, indices) {
-    const normals = new Array(vertices.length).fill(0); // 初始化为0
+    const normals = new Array(indices.length).fill(0); // 初始化为0
 
     // 遍历索引，计算每个三角形的法线
     for (let i = 0; i < indices.length; i += 3) {
+
       const i1 = indices[i] * 3;     // 第一个顶点索引
-      const i2 = indices[i + 1] * 3; // 第二个顶点索引
-      const i3 = indices[i + 2] * 3; // 第三个顶点索引
+      const i2 = indices[i + 1] * 3;
+      const i3 = indices[i + 2] * 3;
 
       // 获取三角形顶点
       const v1 = [vertices[i1], vertices[i1 + 1], vertices[i1 + 2]];
@@ -304,13 +305,12 @@ void main() {
       // 叉积计算法线
       const normal = m3.normalize(m3.cross(vector1, vector2));
 
-      // 将法线加到每个顶点的法线中（累积，支持平滑法线）
-      for (let j of [i1, i2, i3]) {
-        normals[j] += normal[0];
-        normals[j + 1] += normal[1];
-        normals[j + 2] += normal[2];
-      }
+      normals[i] = normal[0];
+      normals[i + 1] = normal[1];
+      normals[i + 2] = normal[2];
     }
+
+    console.log(normals)
 
     // 将累积法线归一化
     for (let i = 0; i < normals.length; i += 3) {
