@@ -94,8 +94,6 @@ void main() {
   let positionAttributeLocation = gl.getAttribLocation(program, "a_position");
   let positionBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer); // 将该缓冲区设置为正在处理的缓冲区
-  const recVertices = setRectangle(200)
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(recVertices), gl.STATIC_DRAW);
 
   // 绘制正方体
   const vertices = generateCubeVertices(200);
@@ -168,7 +166,7 @@ void main() {
     // 清空画布和深度缓冲
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    gl.enable(gl.CULL_FACE);  // 剔除背面
+    gl.enable(gl.CULL_BACK);  // 剔除背面
     gl.enable(gl.DEPTH_TEST)  // 深度检测（否则会按先后顺序渲染）
 
     gl.useProgram(program);   //运行着色器程序
@@ -194,16 +192,20 @@ void main() {
     console.log(m4.multiplyMatrixVector(mvpMatrix, [-200, -200, -200, 1]));
     gl.uniformMatrix4fv(matrixLocation, false, mvpMatrix);   // 设置变换矩阵
 
-    let primitiveType = gl.TRIANGLES;
-    let offset2 = 0;
-    let count = 6;
-    gl.drawArrays(primitiveType, offset2, count);
+
 
     const indices = generateCubeIndices();
     const indexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);  // 绑定索引缓存
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
     gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+
+    // const recVertices = setRectangle(200)
+    // gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(recVertices), gl.STATIC_DRAW);
+    // let primitiveType = gl.TRIANGLES;
+    // let offset2 = 0;
+    // let count = 6;
+    // gl.drawArrays(primitiveType, offset2, count)
   }
 
   function setRectangle(width) {
@@ -214,7 +216,7 @@ void main() {
       -2 * a, -a, 2 * a,
       -2 * a, -a, -2 * a,
       2 * a, -a, 2 * a,
-      2 * a, -a, -2 * a 
+      2 * a, -a, -2 * a
     ]
     return vertices
   }
@@ -230,6 +232,11 @@ void main() {
       a, -a, a,  // 5: Right bottom front
       a, a, a,    // 6: Right top front
       -a, a, a,  // 7: Left top front
+
+      -2 * a, -a, 2 * a,
+      2 * a, -a, 2 * a,
+      -2 * a, -a, -2 * a,
+      2 * a, -a, -2 * a
     ];
     return vertices;
   }
@@ -242,6 +249,8 @@ void main() {
       [6, 2, 7, 3], // top
       [4, 7, 0, 3], // left
       [1, 2, 5, 6], // right
+
+      [8, 9, 10, 11]
     ]
 
     const indices = [];
