@@ -30,6 +30,7 @@
 </style>
 
 <script type="module">
+  import m3 from './matrix3.js';
   import m4 from './matrix4.js';
 
   let canvas = document.getElementById("c");
@@ -116,47 +117,36 @@ void main() {
 
   window.addEventListener('keydown', handleKeyDown, true);
 
-  let startX = 0;
-  let startY = 0;
   let isDragging = false;
 
   window.addEventListener('mousedown', (e) => {
-    startX = e.clientX;
-    startY = e.clientY;
     isDragging = true;
-
-    console.log(`拖动开始：(${startX}, ${startY})`);
   });
 
   window.addEventListener('mouseup', (e) => {
     if (isDragging) {
-      // 记录拖动的终止点
-      let endX = e.clientX;
-      let endY = e.clientY;
-
-      console.log(`拖动结束：(${endX}, ${endY})`);
-
-      // 结束拖动
       isDragging = false;
     }
   });
 
   window.addEventListener('mousemove', (e) => {
     if (isDragging) {
-      let dy = -e.movementX;
-      let dx = -e.movementY;
-      let l = Math.sqrt(dx * dx + dy * dy);
-      if (l === 0) return
-      let axis = [dx / l, dy / l, 0]    // 确定旋转轴
-      let angle = l * 0.003  // 调整旋转灵敏度
+      // let dy = -e.movementX;
+      // let dx = -e.movementY;
+      // let l = Math.sqrt(dx * dx + dy * dy);
+      // if (l === 0) return
+      // let axis = [dx / l, dy / l, 0]    // 确定旋转轴
+      // let angle = l * 0.003  // 调整旋转灵敏度
 
-      rotationTrackball = m4.multiply(rotationTrackball, m4.rotateAroundAxis(angle, axis))
-      console.log(rotationTrackball)
+      // rotationTrackball = m4.multiply(rotationTrackball, m4.rotateAroundAxis(angle, axis))
+      let endX = e.clientX
+      let endY = e.clientY
+      let startX = e.clientX - e.movementX
+      let startY = e.clientY - e.movementY
+      updateTrackballMatrix(startX, startY, endX, endY)
       drawScene()
     }
-    // 执行鼠标移动时的逻辑操作
   });
-
 
   function drawScene() {
     resizeCanvasToDisplaySize(gl.canvas);
@@ -166,7 +156,7 @@ void main() {
     // 清空画布和深度缓冲
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    gl.enable(gl.CULL_BACK);  // 剔除背面
+    gl.enable(gl.CULL_FACE);  // 剔除背面
     gl.enable(gl.DEPTH_TEST)  // 深度检测（否则会按先后顺序渲染）
 
     gl.useProgram(program);   //运行着色器程序
@@ -189,7 +179,7 @@ void main() {
     let mvpMatrix = m4.multiply(vpMatrix, modelMatrix)
 
     // let matrix = m4.identity();
-    console.log(m4.multiplyMatrixVector(mvpMatrix, [-200, -200, -200, 1]));
+    // console.log(m4.multiplyMatrixVector(mvpMatrix, [-200, -200, -200, 1]));
     gl.uniformMatrix4fv(matrixLocation, false, mvpMatrix);   // 设置变换矩阵
 
 
@@ -250,7 +240,8 @@ void main() {
       [4, 7, 0, 3], // left
       [1, 2, 5, 6], // right
 
-      [8, 9, 10, 11]
+      [8, 9, 10, 11],
+      [11, 10, 9, 8]
     ]
 
     const indices = [];
@@ -263,19 +254,19 @@ void main() {
 
   function handleKeyDown(e) {
     if (e.ctrlKey) {
-      if (e.key === 'ArrowLeft') {
+      if (e.key === 'ArrowUp') {
         rotation[0] -= degToRad(5);
       }
 
-      if (e.key === 'ArrowRight') {
+      if (e.key === 'ArrowDown') {
         rotation[0] += degToRad(5);
       }
 
-      if (e.key === 'ArrowUp') {
+      if (e.key === 'ArrowRight') {
         rotation[1] += degToRad(5);
       }
 
-      if (e.key === 'ArrowDown') {
+      if (e.key === 'ArrowLeft') {
         rotation[1] -= degToRad(5);
       }
 
@@ -312,6 +303,30 @@ void main() {
       }
     }
     drawScene();
+  }
+
+  // 更新虚拟跟踪球矩阵
+  function updateTrackballMatrix(fromX, fromY, toX, toY) {
+    const width = canvas.clientWidth
+    const height = canvas.clientHeight
+    let x1 = 2 * fromX / width - 1;
+    let y1 = 1 - 2 * fromY / height
+    let x2 = 2 * toX / width - 1;
+    let y2 = 1 - 2 * toY / height
+    let z1 = 0, z2 = 0
+
+    if (x1 * x1 + y1 * y1 <= 0.5) z1 = Math.sqrt(1 - x1 * x1 - y1 * y1)
+    else z1 = 0.5 / Math.sqrt(x1 * x1 + y1 * y1)
+    if (x2 * x2 + y2 * y2 <= 0.5) z2 = Math.sqrt(1 - x2 * x2 - y2 * y2)
+    else z2 = 0.5 / Math.sqrt(x2 * x2 + y2 * y2)
+
+    let a = [x1, y1, z1];
+    let b = [x2, y2, z2];
+
+    let axis = m3.normalize(m3.cross(a, b))
+    let angle = -Math.acos(((a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) / Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2])
+      / Math.sqrt(b[0] * b[0] + b[1] * b[1] + b[2] * b[2])))
+    rotationTrackball = m4.multiply(rotationTrackball, m4.rotateAroundAxis(angle, axis))
   }
 
   function radToDeg(r) {
