@@ -130,13 +130,13 @@ void main() {
   gl.vertexAttribPointer(
     positionAttributeLocation, size, type, normalize, stride, offset)   // 这些顶点属性会存储在当前VAO中
 
-  // // 创建法线缓冲区, 将其设为当前ARRAY_BUFFER
-  // var normalBuffer = gl.createBuffer();
-  // gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-  // let normals = generateCubeNormals(vertices, indices)
-  // gl.bufferData(gl.ARRAY_BUFFER, normals, gl.STATIC_DRAW);
-  // gl.enableVertexAttribArray(normalAttributeLocation);
-  // gl.vertexAttribPointer(normalAttributeLocation, 3, gl.FLOAT, false, 0, 0);
+  // 创建法线缓冲区, 将其设为当前ARRAY_BUFFER
+  var normalBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+  let normals = generateCubeNormals(vertices, indices)
+  gl.bufferData(gl.ARRAY_BUFFER, normals, gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(normalAttributeLocation);
+  gl.vertexAttribPointer(normalAttributeLocation, 3, gl.FLOAT, false, 0, 0);
 
   drawScene();
 
