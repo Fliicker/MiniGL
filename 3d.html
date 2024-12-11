@@ -42,7 +42,8 @@
 // It will receive data from a buffer
 in vec3 a_position;
 in vec3 a_normal;
-uniform mat4 u_matrix;
+uniform mat4 u_mvpMatirx;
+uniform mat4 u_modelInverseTranspose;
 out vec4 v_color;   // 输出颜色
 out vec3 v_normal;
 
@@ -51,14 +52,14 @@ void main() {
 
   // gl_Position is a special variable a vertex shader
   // is responsible for setting
-  gl_Position = u_matrix * vec4(a_position, 1.0);
+  gl_Position = u_mvpMatirx * vec4(a_position, 1.0);
 
   // Convert from clip space to color space.
   // Clip space goes -1.0 to +1.0
   // Color space goes from 0.0 to 1.0
   v_color =  gl_Position / gl_Position.w * 0.5 + 0.5;
   // v_color = vec4(a_position)
-  v_normal = a_normal;
+  v_normal = mat3(u_modelInverseTranspose) * a_normal;    // 重定向法线, 去除位移部分
 }
 `;
 
@@ -108,7 +109,8 @@ void main() {
 
   //告诉WebGL如何获取数据并将其提供给顶点着色器的属性
   let colorLocation = gl.getUniformLocation(program, "u_color");
-  let matrixLocation = gl.getUniformLocation(program, "u_matrix");
+  let matrixLocation = gl.getUniformLocation(program, "u_mvpMatirx");
+  let modelITLocation = gl.getUniformLocation(program, "u_modelInverseTranspose");
   let reverseLightDirectionLocation = gl.getUniformLocation(program, "u_reverseLightDirection");
   let positionAttributeLocation = gl.getAttribLocation(program, "a_position");
   let normalAttributeLocation = gl.getAttribLocation(program, "a_normal");
@@ -117,7 +119,8 @@ void main() {
 
   // 绘制正方体
   const vertices = generateCubeVertices(200);
-  const indices = generateCubeIndices();
+  const faces = generateCubeFaces();
+  const indices = generateCubeIndices(faces);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW)
   let vao = gl.createVertexArray(); //创建属性状态集合：顶点数组对象(vao), 该对象指向顶点数据
   gl.bindVertexArray(vao);  //将创建的vao绑定为当前活动的VAO, 使后续所有属性的设置(如gl.vertexAttribPointer)都会记录到这个VAO中
@@ -135,8 +138,9 @@ void main() {
   // 创建法线缓冲区, 将其设为当前ARRAY_BUFFER
   var normalBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-  let normals = generateCubeNormals(vertices, indices)
-  gl.bufferData(gl.ARRAY_BUFFER, normals, gl.STATIC_DRAW);
+  let normals = generateCubeNormals(vertices, faces)
+  console.log(normals)
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
   gl.enableVertexAttribArray(normalAttributeLocation);
   gl.vertexAttribPointer(normalAttributeLocation, 3, gl.FLOAT, false, 0, 0);
 
@@ -203,11 +207,15 @@ void main() {
     let vpMatrix = m4.multiply(projectionMatrix, viewMatrix)
     let mvpMatrix = m4.multiply(vpMatrix, modelMatrix)
 
+    let modelInverseMatrix = m4.inverse(modelMatrix);
+    let modelITMatrix = m4.transpose(modelInverseMatrix);
+
     // let matrix = m4.identity();
     // console.log(m4.multiplyMatrixVector(mvpMatrix, [-200, -200, -200, 1]));
     gl.uniform4fv(colorLocation, [0.2, 1, 0.2, 1]);
     gl.uniformMatrix4fv(matrixLocation, false, mvpMatrix);   // 设置变换矩阵
-    gl.uniform3fv(reverseLightDirectionLocation, m3.normalize([0, 0, 1]));
+    gl.uniformMatrix4fv(modelITLocation, false, modelITMatrix);   // 重定向法线
+    gl.uniform3fv(reverseLightDirectionLocation, m3.normalize([0.5, 0.2, 1]));
 
     const indexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);  // 绑定索引缓存
@@ -247,15 +255,19 @@ void main() {
       a, a, a,    // 6: Right top front
       -a, a, a,  // 7: Left top front
 
-      // -2 * a, -a, 2 * a,
-      // 2 * a, -a, 2 * a,
-      // -2 * a, -a, -2 * a,
-      // 2 * a, -a, -2 * a
+      -2 * a, -a, 2 * a,
+      2 * a, -a, 2 * a,
+      -2 * a, -a, -2 * a,
+      2 * a, -a, -2 * a,
+      2 * a, -a, -2 * a,
+      2 * a, -a, 2 * a,
+      -2 * a, -a, -2 * a,
+      -2 * a, -a, 2 * a
     ];
     return vertices;
   }
 
-  function generateCubeIndices() {
+  function generateCubeFaces() {
     const faces = [
       [0, 3, 1, 2], // back
       [5, 6, 4, 7], // front
@@ -264,10 +276,14 @@ void main() {
       [4, 7, 0, 3], // left
       [1, 2, 5, 6], // right
 
-      // [8, 9, 10, 11],
-      // [11, 10, 9, 8]
+      [8, 9, 10, 11],
+      [12, 13, 14, 15]
     ]
 
+    return faces
+  }
+
+  function generateCubeIndices(faces) {
     const indices = [];
     for (const face of faces) {
       indices.push(face[0], face[1], face[2]);  // Triangle 1
@@ -276,15 +292,16 @@ void main() {
     return indices;
   }
 
-  function generateCubeNormals(vertices, indices) {
+  function generateCubeNormals(vertices, faces) {
     const normals = new Float32Array(vertices.length); // 初始化法向量数组
 
-    // 遍历每个三角形
-    for (let i = 0; i < indices.length; i += 3) {
-      // 获取三角形三个顶点的索引
-      const i0 = indices[i];
-      const i1 = indices[i + 1];
-      const i2 = indices[i + 2];
+    // 遍历每个正方体面
+    for (let i = 0; i < faces.length; i++) {
+      // 获取四个顶点
+      const i0 = faces[i][0];
+      const i1 = faces[i][1];
+      const i2 = faces[i][2];
+      const i3 = faces[i][3];
 
       // 获取三角形三个顶点的坐标
       const v0 = vertices.slice(i0 * 3, i0 * 3 + 3);
@@ -299,12 +316,13 @@ void main() {
       const normal = m3.normalize(m3.cross(edge1, edge2));
 
       // 累加法向量到对应顶点的法向量中
-      for (const idx of [i0, i1, i2]) {
+      for (const idx of [i0, i1, i2, i3]) {
         normals[idx * 3] += normal[0];
         normals[idx * 3 + 1] += normal[1];
         normals[idx * 3 + 2] += normal[2];
       }
     }
+
 
     // 对每个顶点的法向量进行归一化
     for (let i = 0; i < normals.length; i += 3) {
