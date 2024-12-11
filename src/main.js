@@ -6,64 +6,6 @@ import m4 from "./matrix4.js";
 let canvas = document.getElementById("c");
 const gl = canvas.getContext("webgl2");
 
-//   var vertexShaderSource = `#version 300 es
-
-// // an attribute is an input (in) to a vertex shader.
-// // It will receive data from a buffer
-// in vec3 a_position;
-// in vec3 a_normal;
-// uniform mat4 u_mvpMatirx;
-// uniform mat4 u_modelInverseTranspose;
-// out vec4 v_color;   // 输出颜色
-// out vec3 v_normal;
-
-// // all shaders have a main function
-// void main() {
-
-//   // gl_Position is a special variable a vertex shader
-//   // is responsible for setting
-//   gl_Position = u_mvpMatirx * vec4(a_position, 1.0);
-
-//   // Convert from clip space to color space.
-//   // Clip space goes -1.0 to +1.0
-//   // Color space goes from 0.0 to 1.0
-//   v_color =  gl_Position / gl_Position.w * 0.5 + 0.5;
-//   // v_color = vec4(a_position)
-//   v_normal = mat3(u_modelInverseTranspose) * a_normal;    // 重定向法线, 去除位移部分
-// }
-// `;
-
-//   var fragmentShaderSource = `#version 300 es
-
-// precision highp float;
-
-// in vec3 v_normal;
-
-// in vec4 v_color;    // 接收从顶点着色器输出的颜色属性(变量名相同)
-
-// uniform vec3 u_reverseLightDirection;
-// uniform vec4 u_color;
-
-// out vec4 outColor;
-
-// void main() {
-//   // Just set the output to a constant redish-purple
-//   // outColor = vec4(1, 0, 0.5, 1);
-
-//   // 因为 v_normal 是一个变化的插值所以它不会是一个单位向量。 归一化使它成为单位向量
-//   vec3 normal = normalize(v_normal);
-
-//   // 通过取法线与光线反向的点积计算光
-//   float light = dot(normal, u_reverseLightDirection);
-
-//   // outColor = v_color;
-//   outColor = u_color;
-
-//   // 只将颜色部分乘以光
-//   outColor.rgb *= light;
-// }
-// `;
-
 // let translation = [gl.canvas.clientWidth / 2, gl.canvas.clientHeight / 2, 0];
 let translation = [0, 0, 0];
 let cameraPosition = [0, 0, 1000];
@@ -80,10 +22,15 @@ let program = createProgram(gl, vertexShader, fragmentShader);
 //告诉WebGL如何获取数据并将其提供给顶点着色器的属性
 let colorLocation = gl.getUniformLocation(program, "u_color");
 let matrixLocation = gl.getUniformLocation(program, "u_mvpMatirx");
+let modelMatrixLocation = gl.getUniformLocation(program, "u_model");
 let modelITLocation = gl.getUniformLocation(program, "u_modelInverseTranspose");
 let reverseLightDirectionLocation = gl.getUniformLocation(program, "u_reverseLightDirection");
 let positionAttributeLocation = gl.getAttribLocation(program, "a_position");
 let normalAttributeLocation = gl.getAttribLocation(program, "a_normal");
+let lightPosLocation = gl.getUniformLocation(program, "u_lightWorldPosition");
+let viewPosLocation = gl.getUniformLocation(program, "u_viewWorldPosition");
+var shininessLocation = gl.getUniformLocation(program, "u_shininess");
+
 let positionBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer); // 将该缓冲区设置为正在处理的缓冲区
 
@@ -184,12 +131,16 @@ function drawScene() {
   let modelInverseMatrix = m4.inverse(modelMatrix);
   let modelITMatrix = m4.transpose(modelInverseMatrix);
 
-  // let matrix = m4.identity();
   // console.log(m4.multiplyMatrixVector(mvpMatrix, [-200, -200, -200, 1]));
+
+  gl.uniform3fv(lightPosLocation, [0, 150, 250]);
+  gl.uniform3fv(viewPosLocation, cameraPosition);
   gl.uniform4fv(colorLocation, [0.2, 1, 0.2, 1]);
-  gl.uniformMatrix4fv(matrixLocation, false, mvpMatrix); // 设置变换矩阵
-  gl.uniformMatrix4fv(modelITLocation, false, modelITMatrix); // 重定向法线
   gl.uniform3fv(reverseLightDirectionLocation, m3.normalize([0.5, 0.2, 1]));
+  gl.uniformMatrix4fv(matrixLocation, false, mvpMatrix); // 设置变换矩阵
+  gl.uniformMatrix4fv(modelMatrixLocation, false, modelMatrix);
+  gl.uniformMatrix4fv(modelITLocation, false, modelITMatrix); // 重定向法线
+  gl.uniform1f(shininessLocation, 100)
 
   const indexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer); // 绑定索引缓存
@@ -258,28 +209,28 @@ function generateCubeVertices(width) {
     a, // 7: Left top front
 
     -2 * a,
-    -a,
+    -a - 0.5,
     2 * a,
     2 * a,
-    -a,
+    -a - 0.5,
     2 * a,
     -2 * a,
-    -a,
+    -a - 0.5,
     -2 * a,
     2 * a,
-    -a,
+    -a - 0.5,
     -2 * a,
     2 * a,
-    -a,
+    -a - 0.5,
     -2 * a,
     2 * a,
-    -a,
+    -a - 0.5,
     2 * a,
     -2 * a,
-    -a,
+    -a - 0.5,
     -2 * a,
     -2 * a,
-    -a,
+    -a - 0.5,
     2 * a,
   ];
   return vertices;
