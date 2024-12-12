@@ -91,7 +91,7 @@ image.addEventListener("load", function () {
   // 现在图像加载完成，拷贝到纹理中
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-  gl.generateMipmap(gl.TEXTURE_2D);
+  gl.generateMipmap(gl.TEXTURE_2D);   // 创建纹理贴图（逐渐缩小的图像集合）
 
   drawScene();
 });
