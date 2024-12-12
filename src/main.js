@@ -4,6 +4,7 @@ import m3 from "./matrix3.js";
 import m4 from "./matrix4.js";
 
 let canvas = document.getElementById("c");
+/** @type {WebGL2RenderingContext} */
 const gl = canvas.getContext("webgl2");
 
 // let translation = [gl.canvas.clientWidth / 2, gl.canvas.clientHeight / 2, 0];
@@ -25,11 +26,13 @@ let matrixLocation = gl.getUniformLocation(program, "u_mvpMatirx");
 let modelMatrixLocation = gl.getUniformLocation(program, "u_model");
 let modelITLocation = gl.getUniformLocation(program, "u_modelInverseTranspose");
 let reverseLightDirectionLocation = gl.getUniformLocation(program, "u_reverseLightDirection");
-let positionAttributeLocation = gl.getAttribLocation(program, "a_position");
-let normalAttributeLocation = gl.getAttribLocation(program, "a_normal");
 let lightPosLocation = gl.getUniformLocation(program, "u_lightWorldPosition");
 let viewPosLocation = gl.getUniformLocation(program, "u_viewWorldPosition");
-var shininessLocation = gl.getUniformLocation(program, "u_shininess");
+let shininessLocation = gl.getUniformLocation(program, "u_shininess");
+
+let positionAttributeLocation = gl.getAttribLocation(program, "a_position");
+let normalAttributeLocation = gl.getAttribLocation(program, "a_normal");
+var texcoordAttributeLocation = gl.getAttribLocation(program, "a_texcoord");
 
 let positionBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer); // 将该缓冲区设置为正在处理的缓冲区
@@ -42,7 +45,6 @@ gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 let vao = gl.createVertexArray(); //创建属性状态集合：顶点数组对象(vao), 该对象指向顶点数据
 gl.bindVertexArray(vao); //将创建的vao绑定为当前活动的VAO, 使后续所有属性的设置(如gl.vertexAttribPointer)都会记录到这个VAO中
 gl.enableVertexAttribArray(positionAttributeLocation); //启用属性，使顶点着色器能访问到缓冲区的数据
-
 //顶点属性配置, 设置属性值如何从缓存区取出数据
 var size = 3; // 2 components per iteration
 var type = gl.FLOAT; // the data is 32bit floats
@@ -52,15 +54,47 @@ var offset = 0; // 数据在缓冲区的偏移量
 gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, offset); // 这些顶点属性会存储在当前VAO中
 
 // 创建法线缓冲区, 将其设为当前ARRAY_BUFFER
-var normalBuffer = gl.createBuffer();
+let normalBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
 let normals = generateCubeNormals(vertices, faces);
-console.log(normals);
 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
 gl.enableVertexAttribArray(normalAttributeLocation);
 gl.vertexAttribPointer(normalAttributeLocation, 3, gl.FLOAT, false, 0, 0);
 
-drawScene();
+// 创建纹理缓冲区
+let texcoordBuffer = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer);
+let texCoords = generateTexCoords();
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(texcoordAttributeLocation);
+gl.vertexAttribPointer(texcoordAttributeLocation, 2, gl.FLOAT, true, 0, 0);
+
+let texture = gl.createTexture(); // 创建一个纹理
+gl.bindTexture(gl.TEXTURE_2D, texture);
+// 用 1x1 个蓝色像素填充纹理
+gl.texImage2D(
+  gl.TEXTURE_2D,
+  0,
+  gl.RGBA,
+  1,
+  1,
+  0,
+  gl.RGBA,
+  gl.UNSIGNED_BYTE,
+  new Uint8Array([0, 0, 255, 255])
+);
+
+// 异步加载图像
+var image = new Image();
+image.src = "./test.jpg";
+image.addEventListener("load", function () {
+  // 现在图像加载完成，拷贝到纹理中
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+  gl.generateMipmap(gl.TEXTURE_2D);
+
+  drawScene();
+});
 
 window.addEventListener("keydown", handleKeyDown, true);
 
@@ -140,7 +174,7 @@ function drawScene() {
   gl.uniformMatrix4fv(matrixLocation, false, mvpMatrix); // 设置变换矩阵
   gl.uniformMatrix4fv(modelMatrixLocation, false, modelMatrix);
   gl.uniformMatrix4fv(modelITLocation, false, modelITMatrix); // 重定向法线
-  gl.uniform1f(shininessLocation, 100)
+  gl.uniform1f(shininessLocation, 100);
 
   const indexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer); // 绑定索引缓存
@@ -259,6 +293,18 @@ function generateCubeIndices(faces) {
     indices.push(face[2], face[1], face[3]); // Triangle 2
   }
   return indices;
+}
+
+function generateTexCoords() {
+  //   let texCoords = [];
+  //   for (let i = 0; i < 6; i++) {
+  //     texCoords = texCoords.concat([1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1]);
+  //   }
+  const texCoords = [
+    0, 0, 1, 0, 1, 1, 0, 1,
+    0, 0, 1, 0, 1, 1, 0, 1,
+  ];
+  return texCoords;
 }
 
 function generateCubeNormals(vertices, faces) {

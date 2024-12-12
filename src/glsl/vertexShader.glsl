@@ -4,6 +4,7 @@
   // It will receive data from a buffer
 in vec3 a_position;
 in vec3 a_normal;
+in vec2 a_texcoord;   // 纹理坐标
 
 uniform vec3 u_lightWorldPosition;
 uniform vec3 u_viewWorldPosition;   // 相机位置
@@ -14,7 +15,8 @@ uniform mat4 u_modelInverseTranspose;
 
 out vec3 v_normal;
 out vec3 v_surfaceToLight;    // 从表面到光源的矢量
-out vec3 v_surfaceToView;   
+out vec3 v_surfaceToView;
+out vec2 v_texcoord;
 
 // all shaders have a main function
 void main() {
@@ -27,4 +29,5 @@ void main() {
   vec3 surfaceWorldPosition = (u_model * vec4(a_position, 1.0f)).xyz;
   v_surfaceToLight = u_lightWorldPosition - surfaceWorldPosition;
   v_surfaceToView = u_viewWorldPosition - surfaceWorldPosition;
+  v_texcoord = a_texcoord;
 }

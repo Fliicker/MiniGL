@@ -5,10 +5,12 @@ precision highp float;
 in vec3 v_normal;
 in vec3 v_surfaceToLight;
 in vec3 v_surfaceToView;
+in vec2 v_texcoord;
 
 uniform vec3 u_reverseLightDirection;
 uniform vec4 u_color;
 uniform float u_shininess;    // 高光亮度
+uniform sampler2D u_texture;  // 纹理
 
 out vec4 outColor;
 
@@ -21,7 +23,7 @@ void main() {
   vec3 kd = vec3(0.3f, 0.3f, 0.3f);   // 漫反射系数
   vec3 ks = vec3(0.9f, 0.9f, 0.9f);   // 镜面反射系数
 
-  float I = 50000.0f;  // 漫反射、镜面反射光源强度
+  float I = 40000.0f;  // 漫反射、镜面反射光源强度
   float Ia = 0.35f;    // 环境光源强度
 
   // 因为 v_normal 是一个变化的插值所以它不会是一个单位向量。 归一化使它成为单位向量
@@ -38,5 +40,8 @@ void main() {
   vec3 diffuse = kd * (I / (r * r)) * max(dot(normal, surfaceToLightDirection), 0.0f);
   vec3 specular = ks * (I / (r * r)) * pow(max(dot(normal, halfVector), 0.0f), u_shininess);
 
-  outColor = vec4(ambient + diffuse + specular, 1.0f);
+  // outColor = vec4(ambient + diffuse + specular, 1.0f);
+
+  outColor = texture(u_texture, v_texcoord);    // 在纹理上找到对应的颜色
+  outColor += vec4( diffuse + specular, 1.0f);
 }
