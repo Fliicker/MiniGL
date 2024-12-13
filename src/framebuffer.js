@@ -100,20 +100,28 @@ gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1); // 指定WebGL一次处理1个字节（�
 gl.texImage2D(
   gl.TEXTURE_2D,
   0,        // 最大的贴图
-  gl.RGB8,
+  gl.RGBA,
   3,
   2,
   0,
-  gl.RGB,
+  gl.RGBA,
   gl.UNSIGNED_BYTE,
-  new Uint8Array([0, 152, 17, 0, 99, 11, 0, 152, 17, 0, 99, 11, 0, 152, 17, 0, 99, 11])
+  null
 );
 
 // 设置筛选器
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); // 绘制范围比最大贴图小
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); // 在水平方向上不重复（同u）
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); // 在垂直方向上不重复（同v）
+
+// 创建帧缓冲
+const fb = gl.createFramebuffer();
+gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+ 
+// 附加纹理为第一个颜色附件
+const attachmentPoint = gl.COLOR_ATTACHMENT0;
+gl.framebufferTexture2D(
+    gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, targetTexture, level);
 
 drawScene();
 
