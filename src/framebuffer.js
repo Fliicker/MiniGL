@@ -72,30 +72,6 @@ gl.vertexAttribPointer(texcoordAttributeLocation, 2, gl.FLOAT, true, 0, 0);
 let texture = gl.createTexture(); // 创建一个纹理
 gl.activeTexture(gl.TEXTURE0 + 0); // 应用纹理单元0
 gl.bindTexture(gl.TEXTURE_2D, texture);
-// 用 1x1 个蓝色像素填充纹理
-// gl.texImage2D(
-//   gl.TEXTURE_2D,
-//   0,
-//   gl.RGBA,
-//   1,
-//   1,
-//   0,
-//   gl.RGBA,
-//   gl.UNSIGNED_BYTE,
-//   new Uint8Array([0, 0, 255, 255])
-// );
-
-// // 异步加载图像
-// var image = new Image();
-// image.src = "./test.jpg";
-// image.addEventListener("load", function () {
-//   // 现在图像加载完成，拷贝到纹理中
-//   gl.bindTexture(gl.TEXTURE_2D, texture);
-//   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-//   gl.generateMipmap(gl.TEXTURE_2D);
-
-//   drawScene();
-// });;
 gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1); // 指定WebGL一次处理1个字节（默认4个）
 gl.texImage2D(
   gl.TEXTURE_2D,
@@ -108,12 +84,53 @@ gl.texImage2D(
   gl.UNSIGNED_BYTE,
   new Uint8Array([0, 152, 17, 0, 99, 11, 0, 152, 17, 0, 99, 11, 0, 152, 17, 0, 99, 11])
 );
-
 // 设置筛选器
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); // 绘制范围比最大贴图小
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); // 在水平方向上不重复（同u）
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); // 在垂直方向上不重复（同v）
+
+
+// 创建渲染目标纹理
+const targetTextureWidth = 256;
+const targetTextureHeight = 256;
+const targetTexture = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, targetTexture);
+gl.texImage2D(
+  gl.TEXTURE_2D,
+  0,        // 最大的贴图
+  gl.RGBA,
+  targetTextureWidth,
+  targetTextureHeight,
+  0,
+  gl.RGBA,
+  gl.UNSIGNED_BYTE,
+  null
+);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+
+// 创建帧缓冲
+const fb = gl.createFramebuffer();
+gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, targetTexture, 0); // 将目标纹理附加到帧缓冲的第一个颜色附件
+
+// 创建深度纹理，附加到帧缓冲中（帧缓冲中没有深度缓冲）
+const depthTexture = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, depthTexture);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24,
+  targetTextureWidth, targetTextureHeight, 0,
+  gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);// 设置深度缓冲的大小和targetTexture相同
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, depthTexture, 0); // 将深度纹理附加到缓冲帧
+
+let status = gl.checkFramebufferStatus(gl.FRAMEBUFFER); // 检查帧缓冲状态，确保附件组合符合规范
+console.log(status)
 
 drawScene();
 
@@ -152,21 +169,39 @@ window.addEventListener("mousemove", (e) => {
 
 function drawScene() {
   resizeCanvasToDisplaySize(gl.canvas);
-  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height); //使视域大小适应新的画布大小
 
-  gl.clearColor(0, 0, 0, 0);
-  // 清空画布和深度缓冲
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  // gl.clearColor(0, 0, 0, 0);
+  // // 清空画布和深度缓冲
+  // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   gl.enable(gl.CULL_FACE); // 剔除背面
   gl.enable(gl.DEPTH_TEST); // 深度检测（否则会按先后顺序渲染）
 
+  // 渲染到目标纹理（通过帧缓冲）
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.viewport(0, 0, targetTextureWidth, targetTextureHeight);   // 重置视口
+  gl.clearColor(0, 0, 0, 0);   // 设置纹理默认颜色
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  const aspect1 = targetTextureWidth / targetTextureHeight;
+  drawCube(aspect1);
+
+  // 渲染目标纹理到屏幕
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.bindTexture(gl.TEXTURE_2D, targetTexture);
+  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  const aspect2 = gl.canvas.clientWidth / gl.canvas.clientHeight;
+  drawCube(aspect2)
+}
+
+function drawCube(aspect) {
   gl.useProgram(program); //运行着色器程序
 
-  // gl.uniform4f(colorLocation, Math.random(), Math.random(), Math.random(), 1); 设置随机颜色
   let projectionMatrix = m4.perspective(
     degToRad(60),
-    gl.canvas.clientWidth / gl.canvas.clientHeight,
+    aspect,
     1,
     2000
   );
@@ -201,13 +236,6 @@ function drawScene() {
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer); // 绑定索引缓存
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
   gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
-
-  // const recVertices = setRectangle(200)
-  // gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(recVertices), gl.STATIC_DRAW);
-  // let primitiveType = gl.TRIANGLES;
-  // let offset2 = 0;
-  // let count = 6;
-  // gl.drawArrays(primitiveType, offset2, count)
 }
 
 function setRectangle(width) {
@@ -442,8 +470,8 @@ function updateTrackballMatrix(fromX, fromY, toX, toY) {
   let axis = m3.normalize(m3.cross(a, b));
   let angle = -Math.acos(
     (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) /
-      Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]) /
-      Math.sqrt(b[0] * b[0] + b[1] * b[1] + b[2] * b[2])
+    Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]) /
+    Math.sqrt(b[0] * b[0] + b[1] * b[1] + b[2] * b[2])
   );
   rotationTrackball = m4.multiply(rotationTrackball, m4.rotateAroundAxis(angle, axis));
 }
