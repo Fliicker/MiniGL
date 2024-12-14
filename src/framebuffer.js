@@ -76,29 +76,19 @@ gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1); // 指定WebGL一次处理1个字节（�
 gl.texImage2D(
   gl.TEXTURE_2D,
   0,        // 最大的贴图
-  gl.RGBA,
+  gl.RGB8,
   3,
   2,
   0,
-  gl.RGBA,
+  gl.RGB,
   gl.UNSIGNED_BYTE,
-  null
+  new Uint8Array([0, 152, 17, 0, 99, 11, 0, 152, 17, 0, 99, 11, 0, 152, 17, 0, 99, 11])
 );
 // 设置筛选器
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); // 在水平方向上不重复（同u）
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); // 在垂直方向上不重复（同v）
 
-<<<<<<< HEAD
-// 创建帧缓冲
-const fb = gl.createFramebuffer();
-gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
- 
-// 附加纹理为第一个颜色附件
-const attachmentPoint = gl.COLOR_ATTACHMENT0;
-gl.framebufferTexture2D(
-    gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, targetTexture, level);
-=======
 
 // 创建渲染目标纹理
 const targetTextureWidth = 256;
@@ -140,7 +130,6 @@ gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, dept
 
 let status = gl.checkFramebufferStatus(gl.FRAMEBUFFER); // 检查帧缓冲状态，确保附件组合符合规范
 console.log(status)
->>>>>>> 1730c810b57243fbcdaa30640886762d117d6227
 
 drawScene();
 

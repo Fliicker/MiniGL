@@ -73,47 +73,47 @@ let texture = gl.createTexture(); // 创建一个纹理
 gl.activeTexture(gl.TEXTURE0 + 0); // 应用纹理单元0
 gl.bindTexture(gl.TEXTURE_2D, texture);
 // 用 1x1 个蓝色像素填充纹理
-// gl.texImage2D(
-//   gl.TEXTURE_2D,
-//   0,
-//   gl.RGBA,
-//   1,
-//   1,
-//   0,
-//   gl.RGBA,
-//   gl.UNSIGNED_BYTE,
-//   new Uint8Array([0, 0, 255, 255])
-// );
-
-// // 异步加载图像
-// var image = new Image();
-// image.src = "./test.jpg";
-// image.addEventListener("load", function () {
-//   // 现在图像加载完成，拷贝到纹理中
-//   gl.bindTexture(gl.TEXTURE_2D, texture);
-//   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-//   gl.generateMipmap(gl.TEXTURE_2D);
-
-//   drawScene();
-// });;
-gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1); // 指定WebGL一次处理1个字节（默认4个）
 gl.texImage2D(
   gl.TEXTURE_2D,
-  0,        // 最大的贴图
-  gl.RGB8,
-  3,
-  2,
   0,
-  gl.RGB,
+  gl.RGBA,
+  1,
+  1,
+  0,
+  gl.RGBA,
   gl.UNSIGNED_BYTE,
-  new Uint8Array([0, 152, 17, 0, 99, 11, 0, 152, 17, 0, 99, 11, 0, 152, 17, 0, 99, 11])
+  new Uint8Array([0, 0, 255, 255])
 );
 
-// 设置筛选器
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); // 绘制范围比最大贴图小
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); // 在水平方向上不重复（同u）
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); // 在垂直方向上不重复（同v）
+// 异步加载图像
+var image = new Image();
+image.src = "./test.jpg";
+image.addEventListener("load", function () {
+  // 现在图像加载完成，拷贝到纹理中
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+  gl.generateMipmap(gl.TEXTURE_2D);
+
+  drawScene();
+});;
+// gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1); // 指定WebGL一次处理1个字节（默认4个）
+// gl.texImage2D(
+//   gl.TEXTURE_2D,
+//   0,        // 最大的贴图
+//   gl.RGB8,
+//   3,
+//   2,
+//   0,
+//   gl.RGB,
+//   gl.UNSIGNED_BYTE,
+//   new Uint8Array([0, 152, 17, 0, 99, 11, 0, 152, 17, 0, 99, 11, 0, 152, 17, 0, 99, 11])
+// );
+
+// // 设置筛选器
+// gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); // 绘制范围比最大贴图小
+// gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+// gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); // 在水平方向上不重复（同u）
+// gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); // 在垂直方向上不重复（同v）
 
 drawScene();
 
