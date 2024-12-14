@@ -95,7 +95,7 @@ image.addEventListener("load", function () {
   gl.generateMipmap(gl.TEXTURE_2D);
 
   drawScene();
-});;
+});
 // gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1); // 指定WebGL一次处理1个字节（默认4个）
 // gl.texImage2D(
 //   gl.TEXTURE_2D,
@@ -186,7 +186,7 @@ function drawScene() {
   let modelInverseMatrix = m4.inverse(modelMatrix);
   let modelITMatrix = m4.transpose(modelInverseMatrix);
 
-  // console.log(m4.multiplyMatrixVector(mvpMatrix, [-200, -200, -200, 1]));
+  console.log(m4.multiplyMatrixVector(mvpMatrix, [-200, -200, -200, 1]));
 
   gl.uniform3fv(lightPosLocation, [0, 150, 250]);
   gl.uniform3fv(viewPosLocation, cameraPosition);
