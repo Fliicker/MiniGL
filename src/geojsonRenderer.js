@@ -23,7 +23,7 @@ const main = async () => {
   const bbox = turf.bbox(geojson);
   console.log(bbox)
   controlCenter.cameraState.position = [center[0], center[1], 70];
-  controlCenter.viewState.z = 70;
+  controlCenter.viewState.z = 100;
   controlCenter.viewState.center = center;
 
   let vs = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
