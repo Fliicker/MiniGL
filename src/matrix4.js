@@ -228,25 +228,25 @@ let m4 = {
       d * (tmp_3 * m00 + tmp_6 * m10 + tmp_11 * m30 - (tmp_2 * m00 + tmp_7 * m10 + tmp_10 * m30)),
       d * (tmp_4 * m00 + tmp_9 * m10 + tmp_10 * m20 - (tmp_5 * m00 + tmp_8 * m10 + tmp_11 * m20)),
       d *
-        (tmp_12 * m13 + tmp_15 * m23 + tmp_16 * m33 - (tmp_13 * m13 + tmp_14 * m23 + tmp_17 * m33)),
+      (tmp_12 * m13 + tmp_15 * m23 + tmp_16 * m33 - (tmp_13 * m13 + tmp_14 * m23 + tmp_17 * m33)),
       d *
-        (tmp_13 * m03 + tmp_18 * m23 + tmp_21 * m33 - (tmp_12 * m03 + tmp_19 * m23 + tmp_20 * m33)),
+      (tmp_13 * m03 + tmp_18 * m23 + tmp_21 * m33 - (tmp_12 * m03 + tmp_19 * m23 + tmp_20 * m33)),
       d *
-        (tmp_14 * m03 + tmp_19 * m13 + tmp_22 * m33 - (tmp_15 * m03 + tmp_18 * m13 + tmp_23 * m33)),
+      (tmp_14 * m03 + tmp_19 * m13 + tmp_22 * m33 - (tmp_15 * m03 + tmp_18 * m13 + tmp_23 * m33)),
       d *
-        (tmp_17 * m03 + tmp_20 * m13 + tmp_23 * m23 - (tmp_16 * m03 + tmp_21 * m13 + tmp_22 * m23)),
+      (tmp_17 * m03 + tmp_20 * m13 + tmp_23 * m23 - (tmp_16 * m03 + tmp_21 * m13 + tmp_22 * m23)),
       d *
-        (tmp_14 * m22 + tmp_17 * m32 + tmp_13 * m12 - (tmp_16 * m32 + tmp_12 * m12 + tmp_15 * m22)),
+      (tmp_14 * m22 + tmp_17 * m32 + tmp_13 * m12 - (tmp_16 * m32 + tmp_12 * m12 + tmp_15 * m22)),
       d *
-        (tmp_20 * m32 + tmp_12 * m02 + tmp_19 * m22 - (tmp_18 * m22 + tmp_21 * m32 + tmp_13 * m02)),
+      (tmp_20 * m32 + tmp_12 * m02 + tmp_19 * m22 - (tmp_18 * m22 + tmp_21 * m32 + tmp_13 * m02)),
       d *
-        (tmp_18 * m12 + tmp_23 * m32 + tmp_15 * m02 - (tmp_22 * m32 + tmp_14 * m02 + tmp_19 * m12)),
+      (tmp_18 * m12 + tmp_23 * m32 + tmp_15 * m02 - (tmp_22 * m32 + tmp_14 * m02 + tmp_19 * m12)),
       d *
-        (tmp_22 * m22 + tmp_16 * m02 + tmp_21 * m12 - (tmp_20 * m12 + tmp_23 * m22 + tmp_17 * m02)),
+      (tmp_22 * m22 + tmp_16 * m02 + tmp_21 * m12 - (tmp_20 * m12 + tmp_23 * m22 + tmp_17 * m02)),
     ];
   },
 
-  transpose: function(m) {
+  transpose: function (m) {
     return [
       m[0], m[4], m[8], m[12],
       m[1], m[5], m[9], m[13],
@@ -254,7 +254,7 @@ let m4 = {
       m[3], m[7], m[11], m[15],
     ];
   },
-  
+
   // 左下角为原点 --> 左上角为原点
   projection: function (width, height, depth) {
     // 注意：这个矩阵翻转了 Y 轴，所以 0 在上方
@@ -309,6 +309,40 @@ let m4 = {
       1,
     ];
   },
+
+  lookAtByDirection: function (cameraPosition, direction, up) {
+    let zAxis = m3.normalize(direction);
+    let xAxis = m3.normalize(m3.cross(up, zAxis));
+    let yAxis = m3.normalize(m3.cross(zAxis, xAxis));
+
+    return [
+      xAxis[0],
+      xAxis[1],
+      xAxis[2],
+      0,
+      yAxis[0],
+      yAxis[1],
+      yAxis[2],
+      0,
+      zAxis[0],
+      zAxis[1],
+      zAxis[2],
+      0,
+      cameraPosition[0],
+      cameraPosition[1],
+      cameraPosition[2],
+      1,
+    ];
+  },
+
+  removeTranslation: function (mat4) {
+    return [
+      mat4[0], mat4[1], mat4[2], 0,
+      mat4[4], mat4[5], mat4[6], 0,
+      mat4[8], mat4[9], mat4[10], 0,
+      0, 0, 0, 1
+    ]
+  }
 };
 
 export default m4;

@@ -1,63 +1,50 @@
 import vertexShaderSource from "./glsl/geojson/vertexShader.glsl?raw";
 import fragmentShaderSource from "./glsl/geojson/fragmentShader.glsl?raw";
-import m3 from "./matrix3.js";
-import m4 from "./matrix4.js";
+import ControlCenter from "./controlCenter";
 import axios from "axios";
 import * as turf from "@turf/turf";
+import m4 from "./matrix4.js";
 
 let canvas = document.getElementById("c");
 /** @type {WebGL2RenderingContext} */
 const gl = canvas.getContext("webgl2");
 
-const modelStates = {
-  translation: [0, 0, 0],
-  rotation: [0, 0, 0],
-};
-
-const cameraStates = {
-  position: [0, 0, 0],
-  up: [0, 1, 0],
-  target: [0, 0, 0],
-};
-
-const perspectiveStates = {
-  fov: degToRad(60),
-  near: 0.1,
-  far: 20,
+const modelData = {
+  vertices: null,
+  pointCount: 0,
 }
 
-let pointCount = 0
 let program;
+let controlCenter = new ControlCenter(gl.canvas.clientWidth, gl.canvas.clientHeight);
 
 const main = async () => {
   const geojson = (await axios.get("/geojson/China.json")).data;
-  let flag = false;
-  turf.featureEach(geojson, (polygon) => {
-    if (flag) return
-    const array = polygonToArray(polygon);
-    const center = turf.center(polygon).geometry.coordinates;
+  const center = turf.center(geojson).geometry.coordinates;
+  const bbox = turf.bbox(geojson);
+  console.log(bbox)
+  controlCenter.cameraState.position = [center[0], center[1], 70];
+  controlCenter.viewState.z = 70;
+  controlCenter.viewState.center = center;
 
-    cameraStates.position = [center[0], center[1], 2];
-    cameraStates.target = [center[0], center[1], 0];
-    pointCount = array.length / 3;
+  let vs = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+  let fs = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+  program = createProgram(gl, vs, fs);
 
-    let vs = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
-    let fs = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
-    program = createProgram(gl, vs, fs);
+  let vao = gl.createVertexArray();
+  gl.bindVertexArray(vao);
 
-    let vao = gl.createVertexArray();
-    gl.bindVertexArray(vao);
+  let positionBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  modelData.vertices = getVertices(geojson)
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(modelData.vertices), gl.STATIC_DRAW);
+  modelData.pointCount = modelData.vertices.length;
 
-    let positionBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(array), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
 
-    gl.enableVertexAttribArray(0);
-    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+  drawScene();
 
-    drawScene();
-    flag = true
-  });
+  controlCenter.initEvents(drawScene)
 };
 
 window.addEventListener("keydown", handleKeyDown, true);
@@ -71,29 +58,10 @@ function drawScene() {
 
   gl.useProgram(program);
 
-  let projectionMatrix = m4.perspective(
-    perspectiveStates.fov,
-    gl.canvas.clientWidth / gl.canvas.clientHeight,
-    perspectiveStates.near,
-    perspectiveStates.far
-  );
-
-  let cameraMatrix = m4.lookAt(cameraStates.position, cameraStates.target, cameraStates.up);
-  let viewMatrix = m4.inverse(cameraMatrix);
-
-  let modelMatrix = m4.translation(...modelStates.translation);
-  // modelMatrix = m4.multiply(modelMatrix, rotationTrackball);
-  modelMatrix = m4.xRotate(modelMatrix, modelStates.rotation[0]);
-  modelMatrix = m4.yRotate(modelMatrix, modelStates.rotation[1]);
-  modelMatrix = m4.zRotate(modelMatrix, modelStates.rotation[2]);
-
-  let vpMatrix = m4.multiply(projectionMatrix, viewMatrix);
-  let mvpMatrix = m4.multiply(vpMatrix, modelMatrix);
-
+  controlCenter.updateAllMatrix();
   let matrixLocation = gl.getUniformLocation(program, "u_mvpMatrix");
-  gl.uniformMatrix4fv(matrixLocation, false, mvpMatrix);
-
-  gl.drawArrays(gl.TRIANGLES, 0, pointCount)
+  gl.uniformMatrix4fv(matrixLocation, false, controlCenter.mvpMatrix);
+  gl.drawArrays(gl.TRIANGLES, 0, modelData.pointCount)
 }
 
 function handleKeyDown(e) {
@@ -150,6 +118,16 @@ function handleKeyDown(e) {
   drawScene();
 }
 
+function getVertices(geojson) {
+  let vertices = [];
+  turf.featureEach(geojson, (polygon) => {
+    const array = polygonToArray(polygon);
+    vertices.push(...array)
+  });
+
+  return vertices;
+}
+
 function polygonToArray(polygon) {
   let array = [];
   let triangles = turf.tesselate(polygon);
@@ -162,10 +140,6 @@ function polygonToArray(polygon) {
 }
 
 function convertToMercator() {}
-
-function degToRad(d) {
-  return (d * Math.PI) / 180;
-}
 
 function createShader(gl, type, source) {
   var shader = gl.createShader(type);
