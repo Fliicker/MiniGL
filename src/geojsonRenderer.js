@@ -12,7 +12,7 @@ const gl = canvas.getContext("webgl2");
 const modelData = {
   vertices: null,
   pointCount: 0,
-}
+};
 
 let program;
 let controlCenter = new ControlCenter(gl.canvas.clientWidth, gl.canvas.clientHeight);
@@ -21,7 +21,7 @@ const main = async () => {
   const geojson = (await axios.get("/geojson/China.json")).data;
   const center = turf.center(geojson).geometry.coordinates;
   const bbox = turf.bbox(geojson);
-  console.log(bbox)
+  console.log(bbox);
   controlCenter.cameraState.position = [center[0], center[1], 70];
   controlCenter.viewState.z = 100;
   controlCenter.viewState.center = center;
@@ -35,7 +35,8 @@ const main = async () => {
 
   let positionBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-  modelData.vertices = getVertices(geojson)
+  modelData.vertices = getVertices(geojson);
+  modelData.lines = getLines(geojson)
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(modelData.vertices), gl.STATIC_DRAW);
   modelData.pointCount = modelData.vertices.length;
 
@@ -44,10 +45,8 @@ const main = async () => {
 
   drawScene();
 
-  controlCenter.initEvents(drawScene)
+  controlCenter.initEvents(drawScene);
 };
-
-window.addEventListener("keydown", handleKeyDown, true);
 
 function drawScene() {
   resizeCanvasToDisplaySize(gl.canvas);
@@ -60,82 +59,51 @@ function drawScene() {
 
   controlCenter.updateAllMatrix();
   let matrixLocation = gl.getUniformLocation(program, "u_mvpMatrix");
+  let modelMatrixLocation = gl.getUniformLocation(program, "u_model");
+  let modelITLocation = gl.getUniformLocation(program, "u_modelInverseTranspose");
+  let lightPosLocation = gl.getUniformLocation(program, "u_lightWorldPosition");
+  let viewPosLocation = gl.getUniformLocation(program, "u_viewWorldPosition");
+
   gl.uniformMatrix4fv(matrixLocation, false, controlCenter.mvpMatrix);
-  gl.drawArrays(gl.TRIANGLES, 0, modelData.pointCount)
-}
+  gl.uniformMatrix4fv(modelMatrixLocation, false, controlCenter.modelMatrix);
+  gl.uniformMatrix4fv(modelITLocation, false, controlCenter.modelITMatrix);
+  gl.uniform3fv(lightPosLocation, [120, 70, 250]);
+  gl.uniform3fv(viewPosLocation, controlCenter.cameraState.position);
 
-function handleKeyDown(e) {
-  if (e.ctrlKey) {
-    if (e.key === "ArrowUp") {
-      modelStates.rotation[0] -= degToRad(1);
-    }
-
-    if (e.key === "ArrowDown") {
-      modelStates.rotation[0] += degToRad(1);
-    }
-
-    if (e.key === "ArrowRight") {
-      modelStates.rotation[1] += degToRad(1);
-    }
-
-    if (e.key === "ArrowLeft") {
-      modelStates.rotation[1] -= degToRad(1);
-    }
-
-    if (e.key === "q") {
-      modelStates.rotation[2] += degToRad(1);
-    }
-
-    if (e.key === "e") {
-      modelStates.rotation[2] -= degToRad(1);
-    }
-  } else if (e.shiftKey) {
-    if (e.key === "ArrowLeft") {
-      cameraStates.position[0] -= 10;
-    }
-
-    if (e.key === "ArrowRight") {
-      cameraStates.position[0] += 10;
-    }
-  } else {
-    if (e.key === "ArrowLeft") {
-      modelStates.translation[0] -= 0.05;
-    }
-
-    if (e.key === "ArrowRight") {
-      modelStates.translation[0] += 0.05;
-    }
-
-    if (e.key === "ArrowUp") {
-      modelStates.translation[1] += 0.05;
-    }
-
-    if (e.key === "ArrowDown") {
-      modelStates.translation[1] -= 0.05;
-    }
-  }
-
-  drawScene();
+  gl.drawArrays(gl.TRIANGLES, 0, modelData.pointCount);
 }
 
 function getVertices(geojson) {
   let vertices = [];
   turf.featureEach(geojson, (polygon) => {
     const array = polygonToArray(polygon);
-    vertices.push(...array)
+    vertices.push(...array);
   });
 
   return vertices;
+}
+
+function getLines(geojson) {
+  turf.featureEach(geojson, (polygon) => {
+    const line = turf.polygonToLine(polygon);
+    turf.flattenEach(line, (item) => {
+      console.log(item)
+    });
+    // console.log(line)
+  });
 }
 
 function polygonToArray(polygon) {
   let array = [];
   let triangles = turf.tesselate(polygon);
   turf.flattenEach(triangles, (triangle) => {
-    let triangleData = triangle.geometry.coordinates[0].slice(0, 3).map(coord => [...coord, 0]).flat();
+    let triangleData = triangle.geometry.coordinates[0]
+      .slice(0, 3)
+      .map((coord) => [...coord, 0])
+      .flat();
     array.push(...triangleData);
   });
-  
+
   return array;
 }
 
@@ -186,7 +154,5 @@ function resizeCanvasToDisplaySize(canvas) {
 
   return needResize;
 }
-
-
 
 main();

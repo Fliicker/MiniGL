@@ -81,14 +81,14 @@ export default class ControlCenter {
     let pitch = this.degToRad(this.viewState.pitch);
     let dx, dy;
     if (this.viewState.pitch === 90) {
-      dx = 0, dy = 0;
+      (dx = 0), (dy = 0);
     } else {
       dx = (this.viewState.z * Math.sin(bearing)) / Math.tan(pitch);
       dy = -(this.viewState.z * Math.cos(bearing)) / Math.tan(pitch);
     }
-    console.log("dx:", dx, "  dy:", dy);
-    console.log("bearing:",this.viewState.bearing)
-    console.log("pitch:",this.viewState.pitch)
+    // console.log("dx:", dx, "  dy:", dy);
+    // console.log("bearing:", this.viewState.bearing);
+    // console.log("pitch:", this.viewState.pitch);
     this.cameraState.position = [
       this.viewState.center[0] + dx,
       this.viewState.center[1] + dy,
@@ -109,12 +109,18 @@ export default class ControlCenter {
     return mvpMat;
   }
 
+  get modelITMatrix() {
+    let modelInverseMatrix = m4.inverse(this.modelMatrix);
+    let modelITMatrix = m4.transpose(modelInverseMatrix);
+    return modelITMatrix;
+  }
+
   degToRad(d) {
     return (d * Math.PI) / 180;
   }
-  
+
   clamp(number, min, max) {
-    return Math.max(min, Math.min(max, number))
+    return Math.max(min, Math.min(max, number));
   }
 
   handleKeyDown(e) {
@@ -156,9 +162,11 @@ export default class ControlCenter {
         let viewRotationMatrix = m4.removeTranslation(transposeViewMatrix);
         let inverseMatrix = m4.multiply(viewRotationMatrix, inverseProjectionMatrix);
         let translateOnView = m4.multiplyMatrixVector(inverseMatrix, [dx, dy, 0, 0.15]); // TODO: 如何实现精确解算?
-        this.cameraState.position[0] += translateOnView[0] / translateOnView[2];
-        this.cameraState.position[1] += translateOnView[1] / translateOnView[2];
-        console.log(translateOnView);
+        // this.cameraState.center[0] += translateOnView[0] / translateOnView[2];
+        // this.cameraState.center[1] += translateOnView[1] / translateOnView[2];
+        this.viewState.center[0] += translateOnView[0] / translateOnView[2];
+        this.viewState.center[1] += translateOnView[1] / translateOnView[2];
+        console.log(translateOnView[0] / translateOnView[2]);
         cb();
       }
       if (this.isDraggingB) {
@@ -173,6 +181,13 @@ export default class ControlCenter {
         this.calcCameraState();
         cb();
       }
+    });
+
+    window.addEventListener("wheel", (e) => {
+      let d = e.deltaY / 10;
+      this.viewState.z = this.clamp(this.viewState.z + d, 10, 500);
+      this.calcCameraState();
+      cb();
     });
   }
 }
