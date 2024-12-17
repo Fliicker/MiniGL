@@ -11,7 +11,7 @@ const gl = canvas.getContext("webgl2");
 
 const modelData = {
   vertices: null,
-  pointCount: 0,
+  lines: null,
 };
 
 let program;
@@ -19,6 +19,7 @@ let controlCenter = new ControlCenter(gl.canvas.clientWidth, gl.canvas.clientHei
 
 const main = async () => {
   const geojson = (await axios.get("/geojson/China.json")).data;
+  // var geojson = turf.simplify(geojsonRaw, { tolerance: 100, highQuality: false });
   const center = turf.center(geojson).geometry.coordinates;
   const bbox = turf.bbox(geojson);
   console.log(bbox);
@@ -33,15 +34,15 @@ const main = async () => {
   let vao = gl.createVertexArray();
   gl.bindVertexArray(vao);
 
-  let positionBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  // let positionBuffer = gl.createBuffer();
+  // gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
   modelData.vertices = getVertices(geojson);
   modelData.lines = getLines(geojson);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(modelData.vertices), gl.STATIC_DRAW);
-  modelData.pointCount = modelData.vertices.length;
+  // let allData = modelData.vertices.concat(modelData.lines.flat());
+  // gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(allData), gl.STATIC_DRAW);
 
-  gl.enableVertexAttribArray(0);
-  gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+  // gl.enableVertexAttribArray(0);
+  // gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
 
   drawScene();
 
@@ -63,6 +64,7 @@ function drawScene() {
   let modelITLocation = gl.getUniformLocation(program, "u_modelInverseTranspose");
   let lightPosLocation = gl.getUniformLocation(program, "u_lightWorldPosition");
   let viewPosLocation = gl.getUniformLocation(program, "u_viewWorldPosition");
+  let uDrawModeLocation = gl.getUniformLocation(program, "u_drawMode");
 
   gl.uniformMatrix4fv(matrixLocation, false, controlCenter.mvpMatrix);
   gl.uniformMatrix4fv(modelMatrixLocation, false, controlCenter.modelMatrix);
@@ -70,7 +72,44 @@ function drawScene() {
   gl.uniform3fv(lightPosLocation, [120, 70, 250]);
   gl.uniform3fv(viewPosLocation, controlCenter.cameraState.position);
 
-  gl.drawArrays(gl.TRIANGLES, 0, modelData.pointCount);
+  let triangleBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, triangleBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(modelData.vertices), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+
+  gl.uniform1i(uDrawModeLocation, 0);
+  gl.drawArrays(gl.TRIANGLES, 0, modelData.vertices.length / 3);
+
+  // let lineBuffer = gl.createBuffer();
+  // gl.bindBuffer(gl.ARRAY_BUFFER, lineBuffer);
+  // gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(modelData.lines[0]), gl.STATIC_DRAW);
+  // gl.enableVertexAttribArray(0);
+  // gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+  // gl.uniform1i(uDrawModeLocation, 1);
+  // gl.lineWidth(10.0);
+  // gl.drawArrays(gl.LINE_STRIP, 0, modelData.lines[0].length / 3);
+
+  let lineBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, lineBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(modelData.lines.flat()), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+  gl.uniform1i(uDrawModeLocation, 1);
+  gl.lineWidth(10.0);
+
+  // modelData.lines.forEach((line) => {
+  //   let lineBuffer = gl.createBuffer();
+  //   gl.bindBuffer(gl.ARRAY_BUFFER, lineBuffer);
+  //   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(modelData.lines), gl.STATIC_DRAW);
+  //   gl.drawArrays(gl.LINE_STRIP, 0, line.length / 3);
+  // })
+
+  let offset = 0;
+  modelData.lines.forEach((line) => {
+    gl.drawArrays(gl.LINE_STRIP, offset, line.length / 3); // 绘制每条线
+    offset += line.length / 3; // 更新偏移量
+  });
 }
 
 function getVertices(geojson) {
@@ -84,14 +123,15 @@ function getVertices(geojson) {
 }
 
 function getLines(geojson) {
-  let lineArray = [];
+  let lineArray = []
   turf.featureEach(geojson, (polygon) => {
     const lines = turf.polygonToLine(polygon);
     turf.flattenEach(lines, (line) => {
-      let lineData = line.geometry.coordinates.map((coord) => [...coord, 0]).flat()
+      let lineData = line.geometry.coordinates.map((coord) => [...coord, 0.01]).flat();
       lineArray.push(lineData)
     });
   });
+  return lineArray
 }
 
 function polygonToArray(polygon) {
@@ -108,7 +148,7 @@ function polygonToArray(polygon) {
   return array;
 }
 
-function convertToMercator() {}
+function convertToMercator() { }
 
 function createShader(gl, type, source) {
   var shader = gl.createShader(type);
