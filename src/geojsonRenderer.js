@@ -84,13 +84,15 @@ function getVertices(geojson) {
 }
 
 function getLines(geojson) {
+  let lineArray = []
   turf.featureEach(geojson, (polygon) => {
-    const line = turf.polygonToLine(polygon);
-    turf.flattenEach(line, (item) => {
-      console.log(item)
+    const lines = turf.polygonToLine(polygon);
+    turf.flattenEach(lines, (line) => {
+      let lineData = line.geometry.coordinates.map((coord) => [...coord, 0]).flat()
+      lineArray.push(lineData)
     });
-    // console.log(line)
   });
+  console.log(lineArray)
 }
 
 function polygonToArray(polygon) {
