@@ -36,7 +36,7 @@ const main = async () => {
   let positionBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
   modelData.vertices = getVertices(geojson);
-  modelData.lines = getLines(geojson)
+  modelData.lines = getLines(geojson);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(modelData.vertices), gl.STATIC_DRAW);
   modelData.pointCount = modelData.vertices.length;
 
@@ -84,7 +84,7 @@ function getVertices(geojson) {
 }
 
 function getLines(geojson) {
-  let lineArray = []
+  let lineArray = [];
   turf.featureEach(geojson, (polygon) => {
     const lines = turf.polygonToLine(polygon);
     turf.flattenEach(lines, (line) => {
@@ -92,7 +92,6 @@ function getLines(geojson) {
       lineArray.push(lineData)
     });
   });
-  console.log(lineArray)
 }
 
 function polygonToArray(polygon) {
